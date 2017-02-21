@@ -14,7 +14,7 @@ import re
 
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
-       	sys.stderr.write(colored('\n\nExample: drupalfinder.py -l /root/list.txt\n\n' ,"yellow" ))
+       	sys.stderr.write(colored('\n\nExample: drupal-checker.py -l /root/list.txt\n\n' ,"yellow" ))
         self.print_help()
         sys.exit(2)
 
