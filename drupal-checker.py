@@ -19,7 +19,7 @@ class MyParser(argparse.ArgumentParser):
 
 
 f = Figlet(font='slant')
-print colored(f.renderText('Drupal Finder'),"red", attrs=['bold'])
+print colored(f.renderText('Drupal Checker'),"red", attrs=['bold'])
 print "==========================="
 print "Drupal Finder v0.1\nAuthor: 0ways\nGitHub: https://github.com/oways"
 print "==========================="
