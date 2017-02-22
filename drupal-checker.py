@@ -62,17 +62,22 @@ bar.finish()
 print "\n\nResult:\n-------------------\n"
 for x in drupals:
 	# get drupal version
-	a = os.popen('curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m1 .' % x).readlines()
+	a = os.popen('curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x).readlines()
 	try:
 		with eventlet.Timeout(3):
 			b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x)
 	except:
-		nothing = ""
+		pass
 	
-	if a and "Drupal" in a[0]:
-		print colored('{0} [Drupal] ==> {1}'.format(x, a[0].replace("\n","").replace("Drupal","")), 'green')
-		version = re.search('[0-9.]+', a[0]).group()
-		print "Exploits: https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
+	if a:
+		if "Drupal" in a[0]:
+			print colored('{0} [Drupal] ==> {1}'.format(x, a[0].replace("\n","").replace("Drupal","")), 'green')
+			version = re.search('[0-9.]+', a[0]).group()
+			print "Exploits: https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
+		if "Drupal" in a[1]:
+			print colored('{0} [Drupal] ==> {1}'.format(x, a[1].replace("\n","").replace("Drupal","")), 'green')
+			version = re.search('[0-9.]+', a[1]).group()
+			print "Exploits: https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
 		'''		if "8.0" in a[0]:
 			print "Exploits: https://www.cvedetails.com/vulnerability-list/vendor_id-1367/product_id-2387/version_id-192943/Drupal-Drupal-8.0.0.html"
 		else if "7.36" in a[0]:
