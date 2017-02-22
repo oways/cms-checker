@@ -65,7 +65,7 @@ for x in drupals:
 	a = os.popen('curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m1 .' % x).readlines()
 	try:
 		with eventlet.Timeout(3):
-			b = requests.get('http://%s/?q=admin/views/ajax/autocomplete/user/w' % x)
+			b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x)
 	except:
 		nothing = ""
 	
@@ -92,6 +92,6 @@ for x in drupals:
 	else:
 		print colored('{0} [Drupal] ==> Version Not Found'.format(x), 'yellow')
 	if 403 != b.status_code:
-		print "vuln to autocomplete exploit ==> http://%s/?q=admin/views/ajax/autocomplete/user/w" % x
+		print "vuln to autocomplete exploit ==> http://%s/admin/views/ajax/autocomplete/user/w" % x
 
 
