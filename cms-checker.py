@@ -17,11 +17,11 @@ class MyParser(argparse.ArgumentParser):
         self.print_help()
         sys.exit(2)
 
-timeout = 1.5
+timeout = 10#1.5
 f = Figlet(font='slant')
 print colored(f.renderText('CMS Checker'),"red", attrs=['bold'])
 print "==========================="
-print "CMS Checker v2\nAuthor: 0ways\nGitHub: https://github.com/oways\nCMSs Included: Wordpress,Drupal,Sharepoint\nTip: increase timeout if you have slow internet connection"
+print "CMS Checker v2\nAuthor: 0ways\nGitHub: https://github.com/oways\nCMSs Included: Wordpress,Joomla,Drupal,Sharepoint\nTip: increase timeout if you have slow internet connection"
 print "==========================="
 eventlet.monkey_patch()
 
@@ -51,7 +51,6 @@ for y in urls:
 		# connection timeout 3 sec
 		with eventlet.Timeout(timeout):
 			content = requests.get('http://%s/' % y.replace("\n",""))
-			#print content.text
 	except:
 		pass
 	# check if the website contain drupal
@@ -67,14 +66,17 @@ for y in urls:
 			sharepoint.append(content.headers['MicrosoftSharePointTeamServices'])
 			print colored("%s => Sharepoint" % y.replace("\n",""), 'green')
 
+		#wordpress
 		elif "wp-content" in content.text:
 			wordpress.append(y.replace("\n",""))
 			print colored("%s => Wordpress" % y.replace("\n",""), 'green')
 		
-		elif "option=com_content" in content.text:
+		#joomla
+		elif "com_content" in content.text:
 			joomla.append(y.replace("\n",""))
 			print colored("%s => Joomla" % y.replace("\n",""), 'green')
 
+		#unkown
 		else:
 			print colored("%s => Unkown" % y.replace("\n",""), 'red')
 			content = ""
@@ -89,7 +91,6 @@ if drupal:
 		a=""
 		version=""
 		# get drupal version
-		#a = os.popen('curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x).readlines()
 		s = 'curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x
 		push = subprocess.Popen(s, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		a, errors = push.communicate()
@@ -137,7 +138,6 @@ if wordpress:
 		version=""
 		v=""
 		# get wordpress version
-		#a = os.popen('curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x).readlines()
 		a = requests.get('http://%s/feed/' % x)
 
 		if a: 
@@ -147,5 +147,23 @@ if wordpress:
 			print "Exploits: https://wpvulndb.com/wordpresses/%s" % version.replace('.','')
 		else:
 			print colored('{0} [Wordpress] ==> Version Not Found'.format(x), 'yellow')
+else:
+	print colored("Nothing here ..\n\n", 'red')
+
+print "\n\n------- Wordpress Check --------\n"
+if joomla:
+	for x in joomla:
+		a=0
+		version=""
+		v=""
+		# get joomla version
+		a = requests.get('http://%s/language/en-GB/en-GB.xml' % x)
+
+		if a: 
+			v = re.search('<version>[0-9.]+<\/', a.text).group()
+			version = re.search('[0-9.]+', v).group()
+			print colored('{0} [Joomla] ==> {1}'.format(x, version), 'green')
+		else:
+			print colored('{0} [Joomla] ==> Version Not Found'.format(x), 'yellow')
 else:
 	print colored("Nothing here ..\n\n", 'red')
