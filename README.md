@@ -4,7 +4,9 @@ also it provide a url contain a list of possible vulnerabilities related to that
 # Usage
 Example: cms-checker.py -l /root/list.txt
 # Screenshots
+
 ## Terminal Output
 <img src="http://i.imgur.com/iRrnJlE.png" >
+
 ## Html Output
 <img src="http://i.imgur.com/N60JyP3.png" >
