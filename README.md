@@ -2,7 +2,7 @@
 This tool allows you to check a list of websites if they have cms installed with various useful information
 also it provide a url contain a list of possible vulnerabilities related to that version.
 ## Usage
-Example: cms-checker.py -l /root/list.txt
+Example: python cms-checker.py -l [List of Urls] -t [# of Threads]
 
 ## Installation
 
