@@ -1,14 +1,11 @@
 subprocess
 termcolor
 eventlet
-time
 progressbar
 pyfiglet
 argparse
-sys
 re
 bs4
-os
 Queue
 threading
 httplib
