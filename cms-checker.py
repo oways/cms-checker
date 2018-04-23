@@ -191,8 +191,8 @@ class ThreadedFetch2(object):
 								print colored('{0} [Joomla] ==> {1}'.format(x, version), 'green')
 							else:
 								print colored('{0} [Joomla] ==> Version Not Found'.format(x), 'yellow')
-					except:
-						pass
+				except:
+					pass
 				self.queue.task_done()
 
 	def __init__(self, urls=[], directory_structure=False, thread_count=5):
