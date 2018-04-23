@@ -29,57 +29,60 @@ class ThreadedFetch(object):
 			self.queue = queue
 		def run(self):
 			while self.queue.empty() == False:
-				url = self.queue.get()
-				title=""
-				content = ""
-				ip_port =""
-				Status = ""
-				srv =""
-				content = requests.get('http://%s/' % url,timeout=timeout, stream=True)
-				html = bs4.BeautifulSoup(content.text,"html.parser")
-				ip_ = getServerIP(url)
+				try:
+					url = self.queue.get()
+					title=""
+					content = ""
+					ip_port =""
+					Status = ""
+					srv =""
+					content = requests.get('http://%s/' % url,timeout=timeout, stream=True)
+					html = bs4.BeautifulSoup(content.text,"html.parser")
+					ip_ = getServerIP(url)
 
-				if content!=0:
-					if not os.path.exists(outputPath):
-						os.mkdir(outputPath,0755)
-					htmlpath = "%s/%s.html" %(outputPath,url)
-					with open(htmlpath , "w+") as f:
-						f.write(content.text.encode('utf-8'))
-					if html.title:
-						title = html.title.text.replace("<title>","").replace("</title>","").encode('utf-8')
-					else:
-						title =""
-					if content.headers!="":
-						if "Server" in content.headers:
-							srv=content.headers['Server']
+					if content!=0:
+						if not os.path.exists(outputPath):
+							os.mkdir(outputPath,0755)
+						htmlpath = "%s/%s.html" %(outputPath,url)
+						with open(htmlpath , "w+") as f:
+							f.write(content.text.encode('utf-8'))
+						if html.title:
+							title = html.title.text.replace("<title>","").replace("</title>","").encode('utf-8')
+						else:
+							title =""
+						if content.headers!="":
+							if "Server" in content.headers:
+								srv=content.headers['Server']
+							else:
+								srv=""
 						else:
 							srv=""
-					else:
-						srv=""
-					#Drupal 
-					if "/sites/default/files/" in content.text:
-						listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Drupal","Version":"","Reference":""})
-						print colored("%s => [Drupal] Server: %s" % (url,srv), 'green')
+						#Drupal 
+						if "/sites/default/files/" in content.text:
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Drupal","Version":"","Reference":""})
+							print colored("%s => [Drupal] Server: %s" % (url,srv), 'green')
 
-					#sharepoint
-					elif "MicrosoftSharePointTeamServices" in content.headers:
-						listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"SharePoint","Version":content.headers['MicrosoftSharePointTeamServices'],"Reference":""})
-						print colored("%s => [Sharepoint] Server: %s" % (url,srv), 'green')
+						#sharepoint
+						elif "MicrosoftSharePointTeamServices" in content.headers:
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"SharePoint","Version":content.headers['MicrosoftSharePointTeamServices'],"Reference":""})
+							print colored("%s => [Sharepoint] Server: %s" % (url,srv), 'green')
 
-					#wordpress
-					elif "wp-content" in content.text:
-						listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Wordpress","Version":"","Reference":""})
-						print colored("%s => [Wordpress] Server: %s" % (url,srv), 'green')
-					
-					#joomla
-					elif "com_content" in content.text:
-						listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Joomla","Version":"","Reference":""})
-						print colored("%s => [Joomla] Server: %s" % (url,srv), 'green')
+						#wordpress
+						elif "wp-content" in content.text:
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Wordpress","Version":"","Reference":""})
+							print colored("%s => [Wordpress] Server: %s" % (url,srv), 'green')
+						
+						#joomla
+						elif "com_content" in content.text:
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Joomla","Version":"","Reference":""})
+							print colored("%s => [Joomla] Server: %s" % (url,srv), 'green')
 
-					#unkown app / adding server type
-					else:
-						listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Unknown","Version":"","Reference":""})
-						print colored("%s => Server: %s" % (url,srv), 'red')
+						#unkown app / adding server type
+						else:
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Unknown","Version":"","Reference":""})
+							print colored("%s => Server: %s" % (url,srv), 'red')
+				except:
+					pass
 				self.queue.task_done()
 
 	def __init__(self, urls=[], directory_structure=False, thread_count=5):
@@ -112,81 +115,84 @@ class ThreadedFetch2(object):
 
 		def run(self):
 			while self.queue.empty() == False:
-				data = self.queue.get()
-				x = data["Url"]
-				if data["CMS"]=="Drupal":
-					b=0
-					a=""
-					version=""
-					# get drupal version
-					s = 'curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x
-					push = subprocess.Popen(s, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-					a, errors = push.communicate()
-					b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x, allow_redirects=False,timeout=timeout)
-					if "Drupal" in a: 
-						fullversion = re.search('[0-9.]+, [0-9]{4}-[0-9]{2}-[0-9]{2}', a).group()
-						print colored('{0} [Drupal] ==> {1}'.format(x, fullversion), 'green')
-						version = re.search('[0-9.]+', a).group()
-						data["Version"] = version
-						data["Reference"] = "https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
-						print "Exploits: %s" % data["Reference"]
-						data["Reference"] = "<a href='%s' target='_blank'>Link</a>" % data["Reference"]
+				try:
+					data = self.queue.get()
+					x = data["Url"]
+					if data["CMS"]=="Drupal":
+						b=0
+						a=""
+						version=""
+						# get drupal version
+						s = 'curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x
+						push = subprocess.Popen(s, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+						a, errors = push.communicate()
+						b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x, allow_redirects=False,timeout=timeout)
+						if "Drupal" in a: 
+							fullversion = re.search('[0-9.]+, [0-9]{4}-[0-9]{2}-[0-9]{2}', a).group()
+							print colored('{0} [Drupal] ==> {1}'.format(x, fullversion), 'green')
+							version = re.search('[0-9.]+', a).group()
+							data["Version"] = version
+							data["Reference"] = "https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
+							print "Exploits: %s" % data["Reference"]
+							data["Reference"] = "<a href='%s' target='_blank'>Link</a>" % data["Reference"]
 
 
-					else:
-						print colored('{0} [Drupal] ==> Version Not Found'.format(x), 'yellow')
-					if b!=0:
-						if 200 == b.status_code:
-							print colored("vuln to autocomplete exploit ==> http://%s/admin/views/ajax/autocomplete/user/w" % x, 'magenta')
-
-				if data["CMS"]=="SharePoint":
-					i = 0
-				 	if i<data["Version"]:
-						ch = data["Version"]
-						if ".0." not in ch:
-							pass
-						if ch == '15.0.0.4763' or ch == '15.0.0.4797' or ch == '15.0.0.4687' :
-							ver = "2013 Build %s" % ch 
-						elif ch == '15.0.0.4599':
-							ver = "2010 Build %s" % ch
 						else:
-							ver = ch
-						print colored('{0} [SharePoint] ==> {1}'.format(x,ver), 'green')
-						data["Version"] = ver
+							print colored('{0} [Drupal] ==> Version Not Found'.format(x), 'yellow')
+						if b!=0:
+							if 200 == b.status_code:
+								print colored("vuln to autocomplete exploit ==> http://%s/admin/views/ajax/autocomplete/user/w" % x, 'magenta')
+
+					if data["CMS"]=="SharePoint":
+						i = 0
+					 	if i<data["Version"]:
+							ch = data["Version"]
+							if ".0." not in ch:
+								pass
+							if ch == '15.0.0.4763' or ch == '15.0.0.4797' or ch == '15.0.0.4687' :
+								ver = "2013 Build %s" % ch 
+							elif ch == '15.0.0.4599':
+								ver = "2010 Build %s" % ch
+							else:
+								ver = ch
+							print colored('{0} [SharePoint] ==> {1}'.format(x,ver), 'green')
+							data["Version"] = ver
 
 
-				if data["CMS"]=="WordPress":
-					a=0
-					version=""
-					v=""
-					# get wordpress version
-					a = requests.get('http://%s/feed/' % x)
-
-					if a: 
-						v = re.search('\?v=[0-9.]+<\/', a.text).group()
-						version = re.search('[0-9.]+', v).group()
-						print colored('{0} [Wordpress] ==> {1}'.format(x, version), 'green')
-						data["Version"] = version.replace('.','')
-						data["Reference"] = "https://wpvulndb.com/wordpresses/%s" % version.replace('.','')
-						print "Exploits: %s" % data["Reference"]
-						data["Reference"] = "<a href='%s' target='_blank'>Link</a>" % data["Reference"]
-					else:
-						print colored('{0} [Wordpress] ==> Version Not Found'.format(x), 'yellow')
-
-					if data["CMS"]=="Joomla":
+					if data["CMS"]=="WordPress":
 						a=0
 						version=""
 						v=""
-						# get joomla version
-						a = requests.get('http://%s/language/en-GB/en-GB.xml' % x)
+						# get wordpress version
+						a = requests.get('http://%s/feed/' % x)
 
 						if a: 
-							v = re.search('<version>[0-9.]+<\/', a.text).group()
+							v = re.search('\?v=[0-9.]+<\/', a.text).group()
 							version = re.search('[0-9.]+', v).group()
-							data["Version"] =  version
-							print colored('{0} [Joomla] ==> {1}'.format(x, version), 'green')
+							print colored('{0} [Wordpress] ==> {1}'.format(x, version), 'green')
+							data["Version"] = version.replace('.','')
+							data["Reference"] = "https://wpvulndb.com/wordpresses/%s" % version.replace('.','')
+							print "Exploits: %s" % data["Reference"]
+							data["Reference"] = "<a href='%s' target='_blank'>Link</a>" % data["Reference"]
 						else:
-							print colored('{0} [Joomla] ==> Version Not Found'.format(x), 'yellow')
+							print colored('{0} [Wordpress] ==> Version Not Found'.format(x), 'yellow')
+
+						if data["CMS"]=="Joomla":
+							a=0
+							version=""
+							v=""
+							# get joomla version
+							a = requests.get('http://%s/language/en-GB/en-GB.xml' % x)
+
+							if a: 
+								v = re.search('<version>[0-9.]+<\/', a.text).group()
+								version = re.search('[0-9.]+', v).group()
+								data["Version"] =  version
+								print colored('{0} [Joomla] ==> {1}'.format(x, version), 'green')
+							else:
+								print colored('{0} [Joomla] ==> Version Not Found'.format(x), 'yellow')
+					except:
+						pass
 				self.queue.task_done()
 
 	def __init__(self, urls=[], directory_structure=False, thread_count=5):
