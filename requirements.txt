@@ -1,12 +1,8 @@
-subprocess32
 termcolor
 eventlet
 progressbar
 pyfiglet
 argparse
-re
 bs4
-Queue
-threading
-httplib
 requests
+pyfiglet
