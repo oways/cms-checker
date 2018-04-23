@@ -1,16 +1,16 @@
 #!/usr/bin/python
 
-import sys, os, re, json, requests, threading, bs4, argparse, time, subprocess
+import sys, os, re, json, requests, threading, bs4, time, subprocess, argparse
 from Queue import Queue
 from pyfiglet import Figlet
 from termcolor import colored
 
 listData =[]
-timeout = 3#1.5
+timeout = 5
 f = Figlet(font='slant')
 print colored(f.renderText('CMS Checker'),"red", attrs=['bold'])
 print "==========================="
-print "CMS Checker v3.1\nAuthor: 0ways\nGitHub: https://github.com/oways\nCMSs Included: Wordpress,Joomla,Drupal,Sharepoint\nNote: increase timeout if you have a slow internet connection"
+print "CMS Checker v3.1\nAuthor: Oways\nTwitter: https://twitter.com/0w4ys\nCMSs Included: Wordpress,Joomla,Drupal,Sharepoint\nNote: increase timeout if you have a slow internet connection"
 print "==========================="
 
 path = "result-%s" % time.strftime("%s-%m-%H_%d-%m-%Y")
@@ -36,7 +36,7 @@ class ThreadedFetch(object):
 					ip_port =""
 					Status = ""
 					srv =""
-					content = requests.get('http://%s/' % url,timeout=timeout, stream=True)
+					content = requests.get('http://%s/' % url,timeout=timeout, verify=True, allow_redirects=True)
 					html = bs4.BeautifulSoup(content.text,"html.parser")
 					ip_ = getServerIP(url)
 
@@ -126,7 +126,7 @@ class ThreadedFetch2(object):
 						s = 'curl --connect-timeout 1 --max-time 1 http://%s/CHANGELOG.txt 2>/dev/null | grep -m2 .' % x
 						push = subprocess.Popen(s, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 						a, errors = push.communicate()
-						b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x, allow_redirects=False,timeout=timeout)
+						b = requests.get('http://%s/admin/views/ajax/autocomplete/user/w' % x, verify=True, allow_redirects=True,timeout=timeout)
 						if "Drupal" in a: 
 							fullversion = re.search('[0-9.]+, [0-9]{4}-[0-9]{2}-[0-9]{2}', a).group()
 							print colored('{0} [Drupal] ==> {1}'.format(x, fullversion), 'green')
@@ -215,38 +215,52 @@ class ThreadedFetch2(object):
 		#if self.queue.qsize() > 0:
 			self.queue.join()
 
-def main():
-	if len(sys.argv) == 1:
-		print 'No URLs given.'
-		sys.exit()
-	# Number of threads
-	if len(sys.argv) >= 3:
-		threads = int(sys.argv[2])
-	else:
-		threads = 20
+class MyParser(argparse.ArgumentParser):
+    	def error(self, message):
+    		sys.stderr.write(colored('\nExample: python cms-checker.py -l ~/list.txt -t 10\n\n' ,"yellow" ))
+        	self.print_help()
+        	sys.exit(2)
 
-	with open(sys.argv[1], "r") as ins:
-		urls = []
-		for line in ins:
-			urls.append(line.rstrip())
+def main():
+	parser=MyParser(usage='python %(prog)s -l [List of Urls] -t [# of Threads]\n')
+	parser.add_argument('-l', help='List of urls', type=argparse.FileType('r'))
+	parser.add_argument('-t', help='Number of threads [Default 5]', type=int)
+	args=parser.parse_args()
+	try:
+		urlslist = args.l.readlines()
+	except:
+		parser.error("")
+
+	# Number of threads
+	if not args.t:
+		threads = 5
+	else:
+		threads = args.t
+
+	urls = []
+	for line in urlslist:
+		urls.append(line.rstrip())
 	print "\n\n------- Quick Check ---------\n"
 	Fetcher = ThreadedFetch(urls, True, threads)
 	Fetcher.run()
 
-	print "\n------- Version Check ---------\n"
-	Fetcher2 = ThreadedFetch2(listData, True, threads)
-	Fetcher2.run()
-	print "\nGenerating the Output ..."
-	html='<html><head><title>CMS Checker</title><script src="https://raw.githubusercontent.com/oways/cms-checker/master/js/jquery-1.12.4.js"></script></script><script src="https://raw.githubusercontent.com/oways/cms-checker/master/js/dataTables.bootstrap.min.js"></script><script src="https://raw.githubusercontent.com/oways/cms-checker/master/js/jquery.dataTables.min.js"></script><link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"><link rel="stylesheet" type="text/css" href="https://raw.githubusercontent.com/oways/cms-checker/master/css/dataTables.bootstrap.min.css"></head><script>$(document).ready(function() {$("#example").DataTable();} );</script><div id="example_wrapper" class="dataTables_wrapper form-inline dt-bootstrap"><table id="example" class="table table-striped table-bordered" cellspacing="0" width="100%"><thead><th>#</th><th>Title</th><th>Url</th><th>IP</th><th>Status</th><th>CMS</th><th>Server</th><th>HTML Snapshot</th><th>Reference</th></thead><tbody>'
-	ID=0
-	for dat in listData:
-		html += "<tr><td>%s</td><td>%s</td><td><a href='http://%s' target='_blank'>%s</a></td><td>%s</td><td>%s</td><td>%s %s</td><td>%s</td><td><a href='./%s.html' target='_blank'>View</a></td><td>%s</td></tr>" % (ID,dat["Title"],dat["Url"],dat["Url"],dat["IP"],dat["Status"],dat["CMS"],dat["Version"],dat["Server"],dat["Url"],dat["Reference"])
-		ID = ID+1
-	html += "</tbody></table></div></html>"
-	outputHtml = "%s/index.html" % outputPath
-	with open(outputHtml , "w+") as f:
-	    f.write(html)
-	print colored("Output path: %s\n" % outputHtml, 'green')
-	
+	if listData:
+		print "\n------- Version Check ---------\n"
+		Fetcher2 = ThreadedFetch2(listData, True, threads)
+		Fetcher2.run()
+
+		print "\nGenerating the Output ..."
+		html='<html><head><title>CMS Checker</title><script src="https://raw.githubusercontent.com/oways/cms-checker/master/js/jquery-1.12.4.js"></script></script><script src="../js/dataTables.bootstrap.min.js"></script><script src="../js/jquery.dataTables.min.js"></script><link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"><link rel="stylesheet" type="text/css" href="https://raw.githubusercontent.com/oways/cms-checker/master/css/dataTables.bootstrap.min.css"></head><script>$(document).ready(function() {$("#example").DataTable();} );</script><div id="example_wrapper" class="dataTables_wrapper form-inline dt-bootstrap"><table id="example" class="table table-striped table-bordered" cellspacing="0" width="100%"><thead><th>#</th><th>Title</th><th>Url</th><th>IP</th><th>Status</th><th>CMS</th><th>Server</th><th>HTML Snapshot</th><th>Reference</th></thead><tbody>'
+		ID=0
+		for dat in listData:
+			html += "<tr><td>%s</td><td>%s</td><td><a href='http://%s' target='_blank'>%s</a></td><td>%s</td><td>%s</td><td>%s %s</td><td>%s</td><td><a href='./%s.html' target='_blank'>View</a></td><td>%s</td></tr>" % (ID,dat["Title"],dat["Url"],dat["Url"],dat["IP"],dat["Status"],dat["CMS"],dat["Version"],dat["Server"],dat["Url"],dat["Reference"])
+			ID = ID+1
+		html += "</tbody></table></div></html>"
+		outputHtml = "%s/index.html" % outputPath
+		with open(outputHtml , "w+") as f:
+		    f.write(html)
+		print colored("Output path: %s\n" % outputHtml, 'green')
+	else:
+		print colored("No valid urls\n\n", 'yellow')
 if __name__ == "__main__":
 	main()
