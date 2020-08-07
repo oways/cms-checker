@@ -4,10 +4,18 @@ import sys, os, re, json, requests, threading, bs4, time, subprocess, argparse, 
 from Queue import Queue
 from pyfiglet import Figlet
 from termcolor import colored
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+# encoding=utf8  
+import sys  
+
+reload(sys)  
+sys.setdefaultencoding('utf8')
 
 listData =[]
-timeout = 3
-threads = 10
+timeout = 15
+threads = 5
+
 f = Figlet(font='slant')
 print colored(f.renderText('CMS Checker'),"red", attrs=['bold'])
 print "==========================="
@@ -34,14 +42,22 @@ class ThreadedFetch(object):
 					ip_port =""
 					Status = ""
 					srv =""
-					content = requests.get('http://%s/' % url,timeout=timeout, verify=True, allow_redirects=True)
+					headers = {'User-agent': 'Mozilla/5.0 (Windows; Intel 10.13; rv:52.0) Gecko/20100101 Firefox/52.0','X-Forwarded-For':'127.0.0.1'}
+
+					content = requests.get('http://%s/' % url,timeout=timeout, headers=headers, verify=False, allow_redirects=True)
+					#print content.headers
+					#print content
+					#print url
 					html = bs4.BeautifulSoup(content.text,"html.parser")
-					ip_ = getServerIP(url)
+					if ":" in url:
+						ip_=url
+					else:
+						ip_ = getServerIP(url)
 
 					if content!=0:
 						if not os.path.exists(outputPath):
 							os.mkdir(outputPath,0755)
-						htmlpath = "%s/%s.html" %(outputPath,url)
+						htmlpath = "%s/%s.html" %(outputPath,url.replace(":","."))
 						with open(htmlpath , "w+") as f:
 							f.write(content.text.encode('utf-8'))
 						if html.title:
@@ -67,7 +83,7 @@ class ThreadedFetch(object):
 
 						#wordpress
 						elif "wp-content" in content.text:
-							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Wordpress","Version":"","Reference":""})
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"WordPress","Version":"","Reference":""})
 							print colored("%s => [Wordpress] Server: %s" % (url,srv), 'green')
 						
 						#joomla
@@ -77,7 +93,7 @@ class ThreadedFetch(object):
 
 						#unkown app / adding server type
 						else:
-							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"Unknown","Version":"","Reference":""})
+							listData.append({"Url":url,"Title":title,"IP":ip_,"Status":content.status_code,"Server":srv,"CMS":"","Version":"","Reference":""})
 							print colored("%s => Server: %s" % (url,srv), 'red')
 				except:
 					pass
@@ -149,10 +165,14 @@ class ThreadedFetch2(object):
 							data["Reference"] = "https://www.cvedetails.com/google-search-results.php?q=drupal+%s&sa=Search" % version
 							print "Exploits: %s" % data["Reference"]
 							data["Reference"] = "<a href='%s' target='_blank'>Link</a>" % data["Reference"]
-
-
 						else:
-							print colored('{0} [Drupal] ==> Version Not Found'.format(x), 'yellow')
+							request = requests.get('http://%s/' % x, verify=True, allow_redirects=True,timeout=timeout)
+							if "drupal.org" in request.content:
+								version = re.search('content="Drupal [0-9]', request.content).group()
+								data["Version"] = version
+								print colored('{0} [Drupal] ==> {1}'.format(x, version), 'green')
+							else:
+								print colored('{0} [Drupal] ==> Version Not Found'.format(x), 'yellow')
 						if b!=0:
 							if 200 == b.status_code:
 								print colored("vuln to autocomplete exploit ==> http://%s/admin/views/ajax/autocomplete/user/w" % x, 'magenta')
@@ -236,9 +256,13 @@ class MyParser(argparse.ArgumentParser):
         	sys.exit(2)
 
 def main():
-	parser=MyParser(usage='python %(prog)s -l [List of Urls] -t [# of Threads]\n')
+	threads = 5
+	allports = False
+
+	parser=MyParser(usage='python %(prog)s -l [List of Urls] -t [# of Threads] -all\n')
 	parser.add_argument('-l', help='List of urls', type=argparse.FileType('r'))
 	parser.add_argument('-t', help='Number of threads [Default 5]', type=int)
+	parser.add_argument('-all', help='Check all http ports [Default False]', type=bool)
 	args=parser.parse_args()
 	try:
 		urlslist = args.l.readlines()
@@ -248,14 +272,24 @@ def main():
 	# Number of threads
 	if not args.t:
 		threads = 5
-	elif args.t > 50:
-		threads = 50
+	elif args.t > 20:
+		threads = 20
 	else:
 		threads = args.t
 
+	if args.all==True:
+		allports=True
+	else:
+		pass
+
 	urls = []
+	httpPorts = [80,280,443,591,593,832,981,1311,2480,444,4444,4567,5000,5104,5280,5800,8443,5988,598,7000,7001,7002,8008,8080,8042,8088,8243,8280,8281,8530,8531,8887,8888,9080,9443,9981,11371,12043,12046,12443,16080,18091,18092]
 	for line in urlslist:
-		urls.append(line.rstrip())
+		if allports:
+			for port in httpPorts:
+				urls.append("%s:%s"%(line.rstrip(),port))
+		else:
+			urls.append(line.rstrip())
 	print "\n\n------- Quick Check ---------\n"
 	Fetcher = ThreadedFetch(urls, True, threads)
 	Fetcher.run()
